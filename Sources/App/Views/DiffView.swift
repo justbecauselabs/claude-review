@@ -9,6 +9,9 @@ struct DiffView: View {
     @State private var selectedLineForComment: Int?
     @State private var newCommentText = ""
     @State private var commentEndLine: Int?
+    @State private var showingInlineComment = false
+    @State private var inlineCommentLineNumber: Int?
+    @State private var inlineCommentText = ""
     
     var body: some View {
         VStack(spacing: 0) {
@@ -100,7 +103,15 @@ struct DiffView: View {
                         onAddComment: { lineNumber in
                             selectedLineForComment = lineNumber
                             showingCommentPopover = true
-                        }
+                        },
+                        onAddInlineComment: { lineNumber in
+                            inlineCommentLineNumber = lineNumber
+                            showingInlineComment = true
+                        },
+                        showingInlineComment: showingInlineComment && inlineCommentLineNumber == getLineNumber(for: splitLine),
+                        inlineCommentText: $inlineCommentText,
+                        onSaveInlineComment: addInlineComment,
+                        onCancelInlineComment: cancelInlineComment
                     )
                 }
             }
@@ -243,22 +254,58 @@ struct DiffView: View {
         commentEndLine = nil
     }
     
+    private func getLineNumber(for splitLine: DiffViewModel.SplitDiffLine) -> Int {
+        return splitLine.rightLine?.newLineNumber ?? splitLine.leftLine?.oldLineNumber ?? 0
+    }
+    
+    private func addInlineComment() {
+        guard let lineNumber = inlineCommentLineNumber,
+              !inlineCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+        
+        let comment = ReviewComment(
+            filePath: fileChange.filePath,
+            startLine: lineNumber,
+            endLine: nil,
+            text: inlineCommentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        
+        appViewModel.addComment(comment)
+        cancelInlineComment()
+    }
+    
+    private func cancelInlineComment() {
+        showingInlineComment = false
+        inlineCommentLineNumber = nil
+        inlineCommentText = ""
+    }
+    
 }
 
 struct DiffLineView: View {
     let splitLine: DiffViewModel.SplitDiffLine
     let comments: [ReviewComment]
     let onAddComment: (Int) -> Void
+    let onAddInlineComment: (Int) -> Void
+    let showingInlineComment: Bool
+    @Binding var inlineCommentText: String
+    let onSaveInlineComment: () -> Void
+    let onCancelInlineComment: () -> Void
+    @State private var isHovering = false
     
     var body: some View {
         VStack(spacing: 0) {
             // Main diff line
             HStack(spacing: 0) {
-                // Left side (old)
+                // Left side (old) - no interactions
                 DiffSideView(
                     diffLine: splitLine.leftLine,
                     side: .left,
-                    onAddComment: onAddComment
+                    onAddComment: onAddComment,
+                    onAddInlineComment: onAddInlineComment,
+                    isHovering: false,
+                    isInteractive: false
                 )
                 
                 // Divider
@@ -266,12 +313,19 @@ struct DiffLineView: View {
                     .fill(Color.secondary.opacity(0.3))
                     .frame(width: 1)
                 
-                // Right side (new)
+                // Right side (new) - interactive
                 DiffSideView(
                     diffLine: splitLine.rightLine,
                     side: .right,
-                    onAddComment: onAddComment
+                    onAddComment: onAddComment,
+                    onAddInlineComment: onAddInlineComment,
+                    isHovering: isHovering,
+                    isInteractive: true
                 )
+                .contentShape(Rectangle())
+                .onHover { hovering in
+                    isHovering = hovering
+                }
             }
             
             // Comments for this line
@@ -285,6 +339,18 @@ struct DiffLineView: View {
                 .padding(.vertical, 4)
                 .background(Color.blue.opacity(0.05))
             }
+            
+            // Inline comment input
+            if showingInlineComment {
+                InlineCommentView(
+                    commentText: $inlineCommentText,
+                    onSave: onSaveInlineComment,
+                    onCancel: onCancelInlineComment
+                )
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+                .background(Color.yellow.opacity(0.1))
+            }
         }
     }
 }
@@ -293,6 +359,9 @@ struct DiffSideView: View {
     let diffLine: DiffLine?
     let side: Side
     let onAddComment: (Int) -> Void
+    let onAddInlineComment: (Int) -> Void
+    let isHovering: Bool
+    let isInteractive: Bool
     
     enum Side {
         case left, right
@@ -304,16 +373,43 @@ struct DiffSideView: View {
             if let diffLine = diffLine {
                 let lineNumber = side == .left ? diffLine.oldLineNumber : diffLine.newLineNumber
                 if let lineNumber = lineNumber {
-                Button(action: {
-                    onAddComment(lineNumber)
-                }) {
-                    Text("\(lineNumber)")
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundColor(.secondary)
-                        .frame(minWidth: 40, alignment: .trailing)
-                }
-                    .buttonStyle(.plain)
-                    .help("Click to add comment")
+                    ZStack {
+                        if isInteractive {
+                            Button(action: {
+                                onAddComment(lineNumber)
+                            }) {
+                                Text("\(lineNumber)")
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                    .frame(minWidth: 40, alignment: .trailing)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Click to add comment")
+                            
+                            // [+] button overlay
+                            if isHovering {
+                                Button(action: {
+                                    onAddInlineComment(lineNumber)
+                                }) {
+                                    Text("[+]")
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 2)
+                                        .background(Color.blue)
+                                        .cornerRadius(2)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Add inline comment")
+                            }
+                        } else {
+                            // Non-interactive line number (left side)
+                            Text("\(lineNumber)")
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundColor(.secondary)
+                                .frame(minWidth: 40, alignment: .trailing)
+                        }
+                    }
+                    .frame(minWidth: 40, alignment: .trailing)
                 } else {
                     Text("")
                         .frame(minWidth: 40)
@@ -413,6 +509,58 @@ struct CommentView: View {
         .padding(.vertical, 4)
         .background(Color.white.opacity(0.8))
         .cornerRadius(6)
+    }
+}
+
+struct InlineCommentView: View {
+    @Binding var commentText: String
+    let onSave: () -> Void
+    let onCancel: () -> Void
+    @FocusState private var isTextFieldFocused: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Add comment")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+            }
+            
+            HStack(spacing: 8) {
+                TextField("Enter your comment...", text: $commentText, axis: .vertical)
+                    .lineLimit(1...3)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($isTextFieldFocused)
+                    .onSubmit {
+                        if !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            onSave()
+                        }
+                    }
+                
+                VStack(spacing: 4) {
+                    Button("Save") {
+                        onSave()
+                    }
+                    .disabled(commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .keyboardShortcut(.return, modifiers: [.command])
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    
+                    Button("Cancel") {
+                        onCancel()
+                    }
+                    .keyboardShortcut(.escape)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        }
+        .onAppear {
+            isTextFieldFocused = true
+        }
     }
 }
 
