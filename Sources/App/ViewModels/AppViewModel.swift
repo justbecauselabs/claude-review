@@ -145,53 +145,78 @@ class AppViewModel {
     }
     
     /// Generates the review prompt for Claude
-    func generateReviewPrompt() -> String {
-        var prompt = """
-        Please review the following code changes and provide feedback:
+    func generateReviewPrompt() -> String {        
+        // Only include user comments with line numbers, file names, and code lines
+        var commentsOnly = ""
         
-        """
-        
-        // Add file changes
         for change in fileChanges {
-            prompt += """
-            
-            File: \(change.filePath)
-            Status: \(change.status.rawValue)
-            
-            """
-            
-            if let diff = change.diffContent {
-                prompt += """
-                Changes:
-                \(diff)
-                
-                """
-            }
-            
-            // Add comments for this file
             let fileComments = comments.filter { $0.filePath == change.filePath }
-            if !fileComments.isEmpty {
-                prompt += "Comments for this file:\n"
-                for comment in fileComments {
-                    prompt += "- Line \(comment.startLine): \(comment.text)\n"
-                    if let endLine = comment.endLine {
-                        prompt += "  End Line: \(endLine)\n"
-                    }
+            guard !fileComments.isEmpty else { continue }
+            
+            for comment in fileComments {
+                let fileName = URL(fileURLWithPath: change.filePath).lastPathComponent
+                let codeLines = extractCodeLines(from: change.diffContent, 
+                                               startLine: comment.startLine,
+                                               endLine: comment.endLine)
+                
+                commentsOnly += "\(fileName):\(comment.startLine): \(comment.text)\n"
+                if !codeLines.isEmpty {
+                    commentsOnly += "\(codeLines)\n"
                 }
-                prompt += "\n"
+                commentsOnly += "\n"
             }
         }
         
-        prompt += """
+        return commentsOnly.isEmpty ? "No comments to review." : commentsOnly
+    }
+    
+    /// Extracts specific lines of code from diff content
+    private func extractCodeLines(from diffContent: String?, startLine: Int, endLine: Int?) -> String {
+        guard let diffContent = diffContent else { return "" }
         
-        Please provide:
-        1. A summary of the changes
-        2. Any potential issues or improvements
-        3. Best practices that could be applied
-        4. Security concerns if any
-        """
+        let lines = diffContent.split(separator: "\n", omittingEmptySubsequences: false)
+        var extractedLines: [String] = []
+        var currentNewLine = 0
+        let targetEndLine = endLine ?? startLine
         
-        return prompt
+        // Parse diff to find the actual code lines
+        for line in lines {
+            let lineString = String(line)
+            
+            // Skip file headers and other metadata
+            guard !lineString.hasPrefix("diff --git") && 
+                  !lineString.hasPrefix("index ") &&
+                  !lineString.hasPrefix("+++") &&
+                  !lineString.hasPrefix("---") else {
+                continue
+            }
+            
+            // Handle hunk headers to track line numbers
+            if lineString.hasPrefix("@@") {
+                let hunkPattern = /@@\s+-\d+(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/
+                if let match = try? hunkPattern.firstMatch(in: lineString),
+                   let newStart = Int(match.1) {
+                    currentNewLine = newStart - 1 // Will be incremented for first actual line
+                }
+                continue
+            }
+            
+            // Handle actual diff lines
+            if lineString.hasPrefix("+") {
+                currentNewLine += 1
+                if currentNewLine >= startLine && currentNewLine <= targetEndLine {
+                    extractedLines.append(String(lineString.dropFirst()))
+                }
+            } else if lineString.hasPrefix(" ") {
+                currentNewLine += 1
+                if currentNewLine >= startLine && currentNewLine <= targetEndLine {
+                    extractedLines.append(String(lineString.dropFirst()))
+                }
+            }
+            // Skip removed lines (they don't contribute to new line numbers)
+        }
+        
+        return extractedLines.joined(separator: "\n")
     }
     
     /// Copies the review prompt to clipboard
