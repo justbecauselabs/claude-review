@@ -82,52 +82,48 @@ enum TestHelpers {
     // MARK: - ReviewComment Factory Methods
     
     static func makeReviewComment(
-        file: String = "test.swift",
-        line: Int = 10,
-        comment: String = "Test comment",
-        severity: ReviewComment.Severity = .suggestion
+        filePath: String = "test.swift",
+        startLine: Int = 10,
+        endLine: Int? = nil,
+        text: String = "Test comment"
     ) -> ReviewComment {
         return ReviewComment(
-            file: file,
-            line: line,
-            comment: comment,
-            severity: severity
+            filePath: filePath,
+            startLine: startLine,
+            endLine: endLine,
+            text: text
         )
     }
     
     static func makeErrorComment() -> ReviewComment {
         return ReviewComment(
-            file: "BuggyClass.swift",
-            line: 25,
-            comment: "This will cause a runtime crash. The variable can be nil here.",
-            severity: .error
+            filePath: "BuggyClass.swift",
+            startLine: 25,
+            text: "Error: This will cause a runtime crash. The variable can be nil here."
         )
     }
     
     static func makeWarningComment() -> ReviewComment {
         return ReviewComment(
-            file: "PerformanceIssue.swift",
-            line: 42,
-            comment: "This loop could be optimized using functional programming approaches.",
-            severity: .warning
+            filePath: "PerformanceIssue.swift",
+            startLine: 42,
+            text: "Warning: This loop could be optimized using functional programming approaches."
         )
     }
     
     static func makeSuggestionComment() -> ReviewComment {
         return ReviewComment(
-            file: "CodeStyle.swift",
-            line: 15,
-            comment: "Consider using a computed property instead of a method for this simple getter.",
-            severity: .suggestion
+            filePath: "CodeStyle.swift",
+            startLine: 15,
+            text: "Suggestion: Consider using a computed property instead of a method for this simple getter."
         )
     }
     
     static func makeNoteComment() -> ReviewComment {
         return ReviewComment(
-            file: "Documentation.swift",
-            line: 5,
-            comment: "This is a good implementation. Well done!",
-            severity: .note
+            filePath: "Documentation.swift",
+            startLine: 5,
+            text: "Note: This is a good implementation. Well done!"
         )
     }
     
@@ -293,11 +289,10 @@ enum TestHelpers {
     }
     
     /// Creates a mock GitService configured to throw errors
-    static func makeFailingMockGitService() -> MockGitService {
+    static func makeFailingMockGitService() async -> MockGitService {
         let mockService = MockGitService()
-        Task {
-            await mockService.shouldThrowError = true
-        }
+        await mockService.reset()
+        await mockService.setThrowsError(true)
         return mockService
     }
 }
@@ -321,16 +316,16 @@ extension FileChange {
 extension ReviewComment {
     /// Convenience initializer for tests
     static func testComment(
-        file: String = "test.swift",
-        line: Int = 10,
-        comment: String = "Test comment",
-        severity: Severity = .suggestion
+        filePath: String = "test.swift",
+        startLine: Int = 10,
+        endLine: Int? = nil,
+        text: String = "Test comment"
     ) -> ReviewComment {
         return ReviewComment(
-            file: file,
-            line: line,
-            comment: comment,
-            severity: severity
+            filePath: filePath,
+            startLine: startLine,
+            endLine: endLine,
+            text: text
         )
     }
 }

@@ -15,7 +15,7 @@ struct WelcomeView: View {
                     .font(.largeTitle)
                     .fontWeight(.bold)
                 
-                Text("Select a Git repository to review staged changes")
+                Text("Select a Git repository to review unstaged changes")
                     .font(.title2)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -69,19 +69,17 @@ struct WelcomeView: View {
                                 .foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    } else if errorMessage.contains("No staged changes") {
+                    } else if errorMessage.contains("No unstaged changes") {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("💡 Next steps:")
                                 .fontWeight(.medium)
                                 .foregroundColor(.secondary)
-                            Text("• Run 'git add <filename>' to stage specific files")
+                            Text("• Make changes to files in your repository")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                                .font(.system(.caption, design: .monospaced))
-                            Text("• Run 'git add .' to stage all changes")
+                            Text("• Save your files to see the changes appear here")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                                .font(.system(.caption, design: .monospaced))
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -102,14 +100,13 @@ struct WelcomeView: View {
             }
             
             VStack(spacing: 8) {
-                Text("Make sure you have staged changes in your repository")
+                Text("Make sure you have unsaved changes in your repository")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
-                Text("Use 'git add <files>' to stage changes for review")
+                Text("Modify files in your repository to see changes for review")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .font(.system(.caption, design: .monospaced))
             }
         }
         .padding(40)

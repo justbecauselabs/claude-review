@@ -59,41 +59,38 @@ struct ModelTests {
     @Test("ReviewComment initializes correctly")
     func testReviewCommentInitialization() {
         let comment = ReviewComment(
-            file: "src/main.swift",
-            line: 42,
-            comment: "This could be improved",
-            severity: .warning
+            filePath: "src/main.swift",
+            startLine: 42,
+            text: "This could be improved"
         )
         
-        #expect(comment.file == "src/main.swift")
-        #expect(comment.line == 42)
-        #expect(comment.comment == "This could be improved")
-        #expect(comment.severity == .warning)
+        #expect(comment.filePath == "src/main.swift")
+        #expect(comment.startLine == 42)
+        #expect(comment.text == "This could be improved")
+        #expect(comment.endLine == nil)
     }
     
-    @Test("ReviewComment Severity enum cases are correct")
-    func testReviewCommentSeverityEnum() {
-        #expect(ReviewComment.Severity.error.rawValue == "error")
-        #expect(ReviewComment.Severity.warning.rawValue == "warning")
-        #expect(ReviewComment.Severity.suggestion.rawValue == "suggestion")
-        #expect(ReviewComment.Severity.note.rawValue == "note")
+    @Test("ReviewComment supports line ranges")
+    func testReviewCommentWithEndLine() {
+        let comment = ReviewComment(
+            filePath: "src/main.swift",
+            startLine: 42,
+            endLine: 45,
+            text: "This entire function could be improved"
+        )
         
-        // Test CaseIterable conformance
-        let allCases = ReviewComment.Severity.allCases
-        #expect(allCases.count == 4)
-        #expect(allCases.contains(.error))
-        #expect(allCases.contains(.warning))
-        #expect(allCases.contains(.suggestion))
-        #expect(allCases.contains(.note))
+        #expect(comment.filePath == "src/main.swift")
+        #expect(comment.startLine == 42)
+        #expect(comment.endLine == 45)
+        #expect(comment.text == "This entire function could be improved")
     }
     
     @Test("ReviewComment conforms to Sendable")
     func testReviewCommentSendable() {
         let comment = ReviewComment(
-            file: "test.swift",
-            line: 1,
-            comment: "Test comment",
-            severity: .note
+            filePath: "test.swift",
+            startLine: 1,
+            text: "Test comment"
         )
         
         // Should be Sendable (compile-time check)
@@ -195,10 +192,9 @@ struct ModelTests {
         
         // Create a review comment for this change
         let comment = ReviewComment(
-            file: fileChange.filePath,
-            line: 12,
-            comment: "Good improvement! Consider adding error handling for the API call.",
-            severity: .suggestion
+            filePath: fileChange.filePath,
+            startLine: 12,
+            text: "Good improvement! Consider adding error handling for the API call."
         )
         
         // Create a diff line that might be parsed from the file change
@@ -210,9 +206,9 @@ struct ModelTests {
         )
         
         // Verify everything works together
-        #expect(fileChange.filePath == comment.file)
+        #expect(fileChange.filePath == comment.filePath)
         #expect(fileChange.status == .modified)
-        #expect(comment.severity == .suggestion)
+        #expect(comment.text.contains("improvement"))
         #expect(diffLine.type == .added)
         #expect(diffLine.content.contains("fetchUser"))
         

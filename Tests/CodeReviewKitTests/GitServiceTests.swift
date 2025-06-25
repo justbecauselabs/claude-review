@@ -8,7 +8,7 @@ actor MockGitService: GitServiceProtocol {
     var mockRepository: Repository?
     var mockFileChanges: [FileChange] = []
     var openRepositoryCallCount = 0
-    var getStagedChangesCallCount = 0
+    var getUnstagedChangesCallCount = 0
     
     func openRepository(at path: String) async throws -> Repository {
         openRepositoryCallCount += 1
@@ -24,11 +24,11 @@ actor MockGitService: GitServiceProtocol {
         return Repository(path: path)
     }
     
-    func getStagedChanges(in repository: Repository) async throws -> [FileChange] {
-        getStagedChangesCallCount += 1
+    func getUnstagedChanges(in repository: Repository) async throws -> [FileChange] {
+        getUnstagedChangesCallCount += 1
         
         if shouldThrowError {
-            throw AppError.gitError("Mock error: Failed to get staged changes")
+            throw AppError.gitError("Mock error: Failed to get unstaged changes")
         }
         
         return mockFileChanges
@@ -40,11 +40,15 @@ actor MockGitService: GitServiceProtocol {
         mockRepository = nil
         mockFileChanges = []
         openRepositoryCallCount = 0
-        getStagedChangesCallCount = 0
+        getUnstagedChangesCallCount = 0
     }
     
     func configureMockFileChanges(_ changes: [FileChange]) {
         mockFileChanges = changes
+    }
+    
+    func setThrowsError(_ shouldThrow: Bool) {
+        shouldThrowError = shouldThrow
     }
 }
 
@@ -96,7 +100,7 @@ struct GitServiceTests {
         let mockService = MockGitService()
         
         await mockService.reset()
-        await mockService.shouldThrowError = true
+        await mockService.setThrowsError(true)
         
         await #expect(throws: AppError.self) {
             try await mockService.openRepository(at: "/some/path")

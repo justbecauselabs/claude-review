@@ -62,12 +62,12 @@ class AppViewModel {
                 throw AppError.gitError("Failed to open repository")
             }
             
-            // Get staged changes
-            let changes = try await getStagedChanges(in: repo)
+            // Get unstaged changes
+            let changes = try await getUnstagedChanges(in: repo)
             
-            // Check if there are no staged changes
+            // Check if there are no unstaged changes
             if changes.isEmpty {
-                errorMessage = "No staged changes found. Use 'git add <files>' to stage changes for review."
+                errorMessage = "No unstaged changes found. Make changes to files in the repository to see them here."
                 fileChanges = []
                 comments = []
                 selectedFileChange = nil
@@ -93,7 +93,7 @@ class AppViewModel {
                     } else if message.contains("Path does not exist") {
                         errorMessage = "The selected path does not exist. Please try again."
                     } else if message.contains("Git diff failed") {
-                        errorMessage = "Failed to get staged changes from Git. Make sure the repository is in a valid state."
+                        errorMessage = "Failed to get unstaged changes from Git. Make sure the repository is in a valid state."
                     } else {
                         errorMessage = "Git error: \(message)"
                     }
@@ -114,9 +114,9 @@ class AppViewModel {
         isLoading = false
     }
     
-    /// Gets staged changes from the repository
-    private func getStagedChanges(in repository: Repository) async throws -> [FileChange] {
-        return try await gitService.getStagedChanges(in: repository)
+    /// Gets unstaged changes from the repository
+    private func getUnstagedChanges(in repository: Repository) async throws -> [FileChange] {
+        return try await gitService.getUnstagedChanges(in: repository)
     }
     
     /// Refreshes the current repository

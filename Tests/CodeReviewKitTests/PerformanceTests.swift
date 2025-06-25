@@ -7,7 +7,7 @@ struct PerformanceTests {
     
     // MARK: - DiffViewModel Performance Tests
     
-    @Test("DiffViewModel parses medium diff efficiently", .timeLimit(.seconds(1)))
+    @Test("DiffViewModel parses medium diff efficiently", .timeLimit(.minutes(1)))
     @MainActor
     func testMediumDiffPerformance() {
         let diffViewModel = DiffViewModel()
@@ -31,7 +31,7 @@ struct PerformanceTests {
         #expect(diffViewModel.splitDiffLines.count < 600)
     }
     
-    @Test("DiffViewModel handles large diff", .timeLimit(.seconds(3)))
+    @Test("DiffViewModel handles large diff", .timeLimit(.minutes(1)))
     @MainActor
     func testLargeDiffPerformance() {
         let diffViewModel = DiffViewModel()
@@ -82,7 +82,7 @@ struct PerformanceTests {
     
     // MARK: - Model Performance Tests
     
-    @Test("FileChange creation with large diff content", .timeLimit(.seconds(1)))
+    @Test("FileChange creation with large diff content", .timeLimit(.minutes(1)))
     func testFileChangeWithLargeDiff() {
         let largeDiffContent = TestHelpers.makeLargeDiff(lineCount: 5000)
         
@@ -122,7 +122,7 @@ struct PerformanceTests {
     
     // MARK: - Collection Performance Tests
     
-    @Test("Large collection of FileChanges", .timeLimit(.seconds(1)))
+    @Test("Large collection of FileChanges", .timeLimit(.minutes(1)))
     func testLargeFileChangeCollection() {
         var fileChanges: [FileChange] = []
         
@@ -152,10 +152,9 @@ struct PerformanceTests {
         // Create many review comments
         for i in 1...500 {
             let comment = ReviewComment(
-                file: "File\(i % 50).swift", // 50 different files
-                line: i % 100, // Lines 0-99
-                comment: "This is comment \(i) with detailed feedback about the code quality and suggestions for improvement.",
-                severity: [.error, .warning, .suggestion, .note].randomElement()!
+                filePath: "File\(i % 50).swift", // 50 different files
+                startLine: i % 100, // Lines 0-99
+                text: "This is comment \(i) with detailed feedback about the code quality and suggestions for improvement."
             )
             comments.append(comment)
         }
@@ -163,11 +162,8 @@ struct PerformanceTests {
         #expect(comments.count == 500)
         
         // Test grouping performance (common operation)
-        let commentsByFile = Dictionary(grouping: comments) { $0.file }
+        let commentsByFile = Dictionary(grouping: comments) { $0.filePath }
         #expect(commentsByFile.keys.count <= 50)
-        
-        let errorComments = comments.filter { $0.severity == .error }
-        #expect(errorComments.count >= 0)
     }
     
     // MARK: - Git Service Mock Performance
@@ -196,7 +192,7 @@ struct PerformanceTests {
     
     // MARK: - Stress Tests
     
-    @Test("Repeated diff parsing stress test", .timeLimit(.seconds(5)))
+    @Test("Repeated diff parsing stress test", .timeLimit(.minutes(1)))
     @MainActor
     func testRepeatedDiffParsingStress() {
         let diffViewModel = DiffViewModel()

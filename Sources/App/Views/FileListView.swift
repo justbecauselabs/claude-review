@@ -35,11 +35,11 @@ struct FileListView: View {
                         .font(.system(size: 30))
                         .foregroundColor(.secondary)
                     
-                    Text("No staged changes")
+                    Text("No unstaged changes")
                         .font(.headline)
                         .foregroundColor(.secondary)
                     
-                    Text("Stage files with 'git add' to review them")
+                    Text("Modify files in your repository to review them")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)

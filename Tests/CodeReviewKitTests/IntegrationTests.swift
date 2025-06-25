@@ -73,7 +73,7 @@ struct IntegrationTests {
         let mockService = MockGitService()
         
         // Configure mock to throw errors
-        await mockService.shouldThrowError = true
+        await mockService.setThrowsError(true)
         
         // Test repository opening error
         do {
@@ -241,7 +241,7 @@ struct IntegrationTests {
     
     // MARK: - Performance Tests
     
-    @Test("DiffViewModel handles large diff efficiently", .timeLimit(.seconds(1)))
+    @Test("DiffViewModel handles large diff efficiently", .timeLimit(.minutes(1)))
     @MainActor
     func testLargeDiffPerformance() {
         let diffViewModel = DiffViewModel()

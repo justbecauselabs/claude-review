@@ -17,11 +17,11 @@ public protocol GitServiceProtocol: Actor {
     /// - Throws: AppError if the repository cannot be opened
     func openRepository(at path: String) async throws -> Repository
     
-    /// Gets staged changes from the repository
+    /// Gets unstaged changes from the repository
     /// - Parameter repository: The repository to get changes from
     /// - Returns: An array of file changes
     /// - Throws: AppError if changes cannot be retrieved
-    func getStagedChanges(in repository: Repository) async throws -> [FileChange]
+    func getUnstagedChanges(in repository: Repository) async throws -> [FileChange]
 }
 
 /// Actor responsible for Git operations
@@ -49,14 +49,14 @@ public actor GitService: GitServiceProtocol {
         return Repository(path: path)
     }
     
-    /// Gets staged changes from the repository
+    /// Gets unstaged changes from the repository
     /// - Parameter repository: The repository to get changes from
     /// - Returns: An array of file changes
     /// - Throws: AppError if changes cannot be retrieved
-    public func getStagedChanges(in repository: Repository) async throws -> [FileChange] {
+    public func getUnstagedChanges(in repository: Repository) async throws -> [FileChange] {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["diff", "--cached"]
+        process.arguments = ["diff"]
         process.currentDirectoryURL = URL(fileURLWithPath: repository.path)
         
         let pipe = Pipe()
